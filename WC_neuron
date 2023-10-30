@@ -161,8 +161,3 @@ class random_walk(object):
         output(self.game_map)
         plt.show()
         return None
-game_act=[]
-save_path=r"D:/test_graph/WC_neuron/100/"
-start_map=random_start(size=[1000,1000])
-neuron_1=WC_neuron(np.zeros([1000,1000]),fig_num="test",rule=[3,5,1,0.03])
-r_arr=neuron_1.main(time=100,pic_out=True,map_out=True,save_fig=True,save_path=save_path)
