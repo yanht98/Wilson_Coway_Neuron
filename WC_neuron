@@ -1,0 +1,168 @@
+#wirh negtive node &small world
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+from random import randint
+import copy
+import seaborn as sns
+from mpl_toolkits.mplot3d import Axes3D
+
+fig_num=0
+def random_start(size=[100,100],start_rate=0.3):
+    game_map=np.zeros(size)
+    for i in range(int(size[0]*size[1]*start_rate)):
+        game_map[np.random.randint(0,size[0]),np.random.randint(0,size[1])]=1
+    return game_map
+def output(game_map):
+    fig = plt.figure(figsize=(12,10))
+    #for y in range(len(game_map)):
+    #    for x in range(len(game_map[0])):
+    #        if game_map[y,x]==1:
+    #            plt.scatter(y,x,marker="s",color="black",s=200,)
+    #        if game_map[y,x]==0:
+    #            plt.scatter(y,x,marker="s",color="white",s=200)
+    ax = sns.heatmap(game_map,cmap="binary")      
+    return "done"
+def output_3d(game_map_arr):
+    fig=plt.figure(figsize=(10,10))
+    ax = fig.gca(projection='3d')
+    print(game_map_arr.shape)
+    for t in range(game_map_arr.shape[0]):
+        for y in range(game_map_arr.shape[1]):
+            for x in range(game_map_arr.shape[2]):
+                if game_map_arr[t,y,x]==1:
+                    ax.scatter(x,y,t,marker="s",color="black",alpha=0.1)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('t')
+    #plt.savefig("D:/3_bodies/pic_orbit/"+str(save_i)+".jpg")
+            #img=cv2.imread(path+str(i)+".jpg")
+            #post_video.write(plt)
+    plt.show()
+class WC_neuron(object):
+    def __init__(self,game_map,size=[10,10],fig_num=0,rule=[3,5,2,0.03]):
+        self.rule=rule#[r,a,t,p]
+        self.size=size
+        self.fig_num=fig_num
+        self.game_map=copy.deepcopy(game_map)
+        self.time_map=copy.deepcopy(game_map)*self.rule[2]#t
+        
+    
+    def main(self,time=100,map_out=False,pic_out=True,save_fig=False,save_path=None):   
+        reward_line=[]
+        game_map_arr=[]
+        for i in range(time):
+    #plt.colorbar(game_map,shrink=0.8,autoscale_None=None)   
+            if map_out and i%1==0:
+                output(self.game_map)
+                if save_fig:
+                    plt.savefig(save_path+str(self.fig_num)+"-"+str(i)+".png")
+                os.system("cls")
+                plt.show()
+            old_map=copy.deepcopy(self.game_map)
+            self.refresh()
+            game_map_arr.append(self.game_map)
+            reward_line.append(self.reward_func(self.game_map))
+        reward_arr=np.array(reward_line)
+        game_map_arr=np.array(game_map_arr)
+        #output_3d(game_map_arr)
+        fig=plt.figure(figsize=(20,len(reward_arr[0])**2))
+        for i in range(len(reward_arr[0])*len(reward_arr[0,0])):
+                #print(a_curve[:,i].shape)
+            plt.plot(np.arange(0,len(reward_arr)),reward_arr[:,int(i/len(reward_arr[0])),int(i%len(reward_arr[0]))]-i, label='node_'+str(i))
+        plt.legend()
+        plt.show()
+        return reward_arr[-30:]
+    def reward_func(self,delta_map,r=50):
+        r_map=np.zeros([int(len(delta_map)/r),int(len(delta_map[0])/r)])
+        for i in range(int(len(delta_map)/r)):
+            for j in range(int(len(delta_map[0])/r)):
+                r_map[i,j]=np.sum(delta_map[i*r:i*r+r,j*r:j*r+r])/r**2
+        #reward=np.sum(delta_map)/(len(new_map)*len(new_map[0]))
+        return r_map
+    def near_num(self,point):
+        num=0
+        around=range(-self.rule[0],self.rule[0],1)
+        for i in around:
+            for j in around:
+                if point[0]+i>=0 and point[0]+i<len(self.game_map)-1 and point[1]+j>=0 and point[1]+j<len(self.game_map[0])-1:
+                    if self.game_map[point[0]+i][point[1]+j]==1 and (i!=0 or j!=0):
+                        if i%2+j%2==1:
+                            num+=1
+                        else: 
+                            num+=1
+               # if point[0]+i>=0 and point[0]+i<len(self.game_map)-1 and point[1]+j>=0 and point[1]+j<len(self.game_map[0])-1:
+                 #   if self.game_map[self.size[0]-point[0]-i][self.size[1]-point[1]-j]==1:
+                 #       if i%2+j%2==1:
+                 #           num+=1
+                 #       else: 
+                  #          num+=-1
+        return num
+    def refresh(self):
+        new_map=copy.deepcopy(self.game_map)
+        for x in range(self.game_map.shape[0]):
+            for y in range(self.game_map.shape[1]):
+                if self.time_map[x,y]>0:
+                    self.time_map[x,y]-=1
+                if self.time_map[x,y]==0 and self.game_map[x,y]==1:
+                    new_map[x,y]=0
+                
+                num=self.near_num([x,y])
+                if num>self.rule[1] and self.game_map[x,y]==0:#a
+                    new_map[x][y]=1
+                    self.time_map[x,y]=self.rule[2]
+                elif np.random.rand(1)<self.rule[3]:
+                    new_map[x][y]=1
+                    self.time_map[x,y]=self.rule[2]
+        self.game_map=new_map
+        return 0
+def ran_start(size=[10,10],time=10):
+    r_max=0
+    for i in range(time):
+        start_map=random_start(size=size)
+        live_game_1=live_game(start_map)
+        r=live_game_1.main(pic_out=False)
+        print(r)
+        if r>r_max:
+            out_map=copy.deepcopy(start_map)
+            r_max=copy.deepcopy(r)
+    return out_map
+class random_walk(object):
+    def __init__(self,start_map,epoch=100):
+        self.epoch=10
+        self.start_map=copy.deepcopy(start_map)
+        self.r_max=0
+        self.game_map=copy.deepcopy(start_map)
+    def step(self,aim_def):
+        ran_x,ran_y=int(np.random.rand()*len(self.game_map)),int(np.random.rand()*len(self.game_map[0]))
+        #print(ran_x,ran_y))
+        self.game_map[ran_x,ran_y]=np.abs(self.game_map[ran_x,ran_y]-1)
+        aim_def_1=aim_def(self.game_map)
+        r=aim_def_1.main(pic_out=False)
+        if r>self.r_max:
+            self.start_map=self.game_map
+            self.r_max=r
+        if r>0.1:
+            return True
+        else:
+            return False
+    def main(self,aim_def,episode=200):
+        for i_episode in range(episode):
+            aim_def_1=aim_def(self.start_map)
+            self.r_max=aim_def_1.main(pic_out=False)
+            for i_epoch in range(self.epoch):
+                if self.step():
+                    print("find!r=",self.r_max)
+                    output(self.game_map)
+                    plt.show()
+                    return self.game_map    
+            print("EP"+str(i_episode)+":r_max="+str(self.r_max))
+            self.game_map=self.start_map
+        output(self.game_map)
+        plt.show()
+        return None
+game_act=[]
+save_path=r"D:/test_graph/WC_neuron/100/"
+start_map=random_start(size=[1000,1000])
+neuron_1=WC_neuron(np.zeros([1000,1000]),fig_num="test",rule=[3,5,1,0.03])
+r_arr=neuron_1.main(time=100,pic_out=True,map_out=True,save_fig=True,save_path=save_path)
